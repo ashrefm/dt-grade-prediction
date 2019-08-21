@@ -1,0 +1,110 @@
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>DT-Grade Prediction</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700,400italic">
+    <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/angular_material/1.1.4/angular-material.min.css">
+</head>
+
+<body ng-app="myApp" ng-cloak style="background-color: #efefef" ng-controller="myCtrl" layout="column">
+    <md-content flex style="width:820">
+        <md-toolbar>
+            <div class="md-toolbar-tools">
+                <span>DT-Grade Prediction</span>
+            </div>
+        </md-toolbar>
+        <md-card>
+            <md-card-content>
+                <p><em>Example application to assess student's answer.</em></p>
+            </md-card-content>
+        </md-card>
+        <md-card>
+            <md-card-content>
+                <div layout="row" layout-align="space-between center">
+                    <span>Problem description
+                        <md-input-container>
+                            <label>Copy and paste here</label>
+                            <textarea ng-model="data.problem" md-maxlength="1000"
+                                rows="3" cols="100" ></textarea>
+                        </md-input-container>
+                    </span>
+                </div>
+                <div layout="row" layout-align="space-between center">
+                    <span>Question
+                        <md-input-container>
+                            <label>Copy and paste here</label>
+                            <textarea ng-model="data.question" md-maxlength="1000"
+                                rows="3" cols="100"></textarea>
+                        </md-input-container>
+                    </span>
+                </div>
+                <div layout="row" layout-align="space-between center">
+                    <span>Answer
+                        <md-input-container>
+                            <label>Copy and paste here</label>
+                            <textarea ng-model="data.answer" md-maxlength="1000"
+                                rows="3" cols="100"></textarea>
+                        </md-input-container>
+                    </span>
+                </div>
+            </md-card-content>
+            <md-card-actions layout="row" layout-align="end center">
+                <md-button ng-click="submit()" class="md-accent md-raised">Predict</md-button>
+            </md-card-actions>
+        </md-card>
+        <md-card>
+            <md-card-content>
+                <div layout="row" layout-align="space-between center">
+                    <span>Prediction</span>
+                    <span>{: result :}</span>
+                </div>
+            </md-card-content>
+        </md-card>
+    </md-content>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.3/angular.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.3/angular-aria.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angular_material/1.1.4/angular-material.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.3/angular-animate.js"></script>
+
+    <script>
+        var app = angular.module('myApp', ['ngMaterial']);
+        app.config(['$interpolateProvider', function ($interpolateProvider) {
+            $interpolateProvider.startSymbol('{:');
+            $interpolateProvider.endSymbol(':}');
+        }]);
+        app.config(function ($mdThemingProvider) {
+            var green = $mdThemingProvider.extendPalette('green', {
+                '500': '00732f'
+            });
+            var red = $mdThemingProvider.extendPalette('red', {
+                'A200': 'ff0000'
+            });
+            $mdThemingProvider.definePalette('green', green);
+            $mdThemingProvider.definePalette('red', red);
+            $mdThemingProvider.theme('default')
+                .primaryPalette('green')
+                .accentPalette('red');
+        });
+        app.controller('myCtrl', ['$scope', '$http',
+            function ($scope, $http) {
+                $scope.data = {};
+                $scope.submit = function () {
+                    $scope.result = "Wait...";
+                    $http({
+                        method: 'POST',
+                        url: '/api/predict',
+                        data: $scope.data
+                    }).success(function (data, status, headers, config) {
+                        $scope.result = data.result;
+                    }).error(function (data, status, headers, config) {
+                        $scope.result = 'Error';
+                    });
+                }
+            }
+        ]);
+    </script>
+</body>
+</html>
