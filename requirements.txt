@@ -4,4 +4,6 @@ scikit-learn==0.21.3
 matplotlib==3.1.1
 gensim==3.8.0
 pyemd==0.5.1
+xmltodict==0.12.0
 flask==1.1.1
+grip==4.5.2

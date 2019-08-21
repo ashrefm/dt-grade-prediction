@@ -1,4 +1,4 @@
-"""Prepare train, dev, test and landmark embeddings."""
+"""Prepare train, test and landmark embeddings."""
 
 import os
 import re
@@ -15,69 +15,76 @@ from utils import get_reference_answers
 from utils import Featurizer
 
 
-def train_dev_test_split(xml_data):
+def train_test_landmark_split(xml_data):
     """Prepare train, dev and test data from original XML into csv format."""
 
     # Preprocess all data into a Pandas dataframe
     xml2df = GradeXML2DataFrame(xml_data)
     data = xml2df.todf()
     # Modeling/Test split
-    modeling, test = train_test_split(data, test_size=0.2, random_state=22)
+    remaining, test = train_test_split(data, test_size=0.2, random_state=22)
     # Train/Dev split
-    train, dev = train_test_split(modeling, test_size=0.75, random_state=22)
+    train, landmarks = train_test_split(
+        remaining,
+        test_size=0.125,
+        random_state=22)
     # Save modeling and test data
     if not os.path.exists('munge'):
         os.makedirs('munge')
     data.to_csv(os.path.join('munge', 'grade_data.csv'), index=False)
-    modeling.to_csv(os.path.join('munge', 'modeling.csv'), index=False)
     train.to_csv(os.path.join('munge', 'train.csv'), index=False)
-    dev.to_csv(os.path.join('munge', 'dev.csv'), index=False)
+    landmarks.to_csv(os.path.join('munge', 'landmarks.csv'), index=False)
     test.to_csv(os.path.join('munge', 'test.csv'), index=False)
-    print("Train, dev and test data were saved successfully "
+    print("INFO: Train, test and landmarks data were created successfully "
     "in munge directory.")
 
 
-def landmarks(csv_data):
+def landmarks(reference_landmarks, student_landmarks):
     """Create a text file with word2vec embeddings of student
     and reference answers and their labels.
 
     Args:
-        csv_data: path to csv file containing the instances
+        reference_landmarks: csv to extract reference landmarks
+        student_landmarks: csv to extract student landmarks
     """
 
-    # Read training set
-    data = pd.read_csv(csv_data)
+    # Init timer
+    start = time()
 
+    # Read a dataset containing all reference answers
+    ra_data = pd.read_csv(reference_landmarks) 
     # Create hash keys for problem description and question
-    data['pd_hash'] = data['problem_description'].apply(get_hash)
-    data['qu_hash'] = data['question'].apply(get_hash)
-
+    ra_data['pd_hash'] = ra_data['problem_description'].apply(get_hash)
+    ra_data['qu_hash'] = ra_data['question'].apply(get_hash)
     # Create a dataframe of reference answers one per row
-    data['ra_list'] = data['reference_answers'].apply(get_reference_answers)
-    landmarks_ra = data[['pd_hash', 'qu_hash', 'label', 'ra_list']]
+    ra_data['ra_list'] = ra_data['reference_answers']\
+        .apply(get_reference_answers)
+    landmarks_ra = ra_data[['pd_hash', 'qu_hash', 'label', 'ra_list']]
     landmarks_ra = landmarks_ra.explode('ra_list')
     landmarks_ra = landmarks_ra.rename(columns={'ra_list':'answer'})
     landmarks_ra['label'] = 0 # these are possible correct answers (class 0)
     landmarks_ra = landmarks_ra.drop_duplicates()
-    print("Found {} distinct reference landmark answers."\
+    print("INFO: Found {} distinct reference landmark answers."\
         .format(len(landmarks_ra)))
 
     # Create a dataframe of student answers
-    landmarks_a = data[['pd_hash', 'qu_hash', 'label', 'answer']]
-    landmarks_a = landmarks_a.drop_duplicates()
-    print("Found {} distinct student landmark answers."\
-        .format(len(landmarks_a)))
+    sa_data = pd.read_csv(student_landmarks)
+    # Create hash keys for problem description and question
+    sa_data['pd_hash'] = sa_data['problem_description'].apply(get_hash)
+    sa_data['qu_hash'] = sa_data['question'].apply(get_hash)
+    landmarks_sa = sa_data[['pd_hash', 'qu_hash', 'label', 'answer']]
+    landmarks_sa = landmarks_sa.drop_duplicates()
+    print("INFO: Found {} distinct student landmark answers."\
+        .format(len(landmarks_sa)))
 
     # Create the landmarks dataframe with distinct answers and their labels
-    landmarks = landmarks_ra.append(landmarks_a).drop_duplicates()
-    landmarks = landmarks_ra.drop_duplicates()
+    landmarks = landmarks_ra.append(landmarks_sa).drop_duplicates()
 
     # Create a featurizer object that converts a phrase into embedding vector
-    emb_file = os.path.join('munge', 'GoogleNews-vectors-negative300.bin')
+    emb_file = os.path.join('data', 'GoogleNews-vectors-negative300.bin')
     featurizer = Featurizer(emb_file)
 
     # Save the embeddings and labels to disk
-    start = time()
     n_landmarks = 0
     with open(os.path.join('munge', 'landmarks.txt'), 'w') as f:
         f.write('pd_hash\tqu_hash\tlabel\tanswer\tembedding\n')
@@ -92,14 +99,17 @@ def landmarks(csv_data):
                 n_landmarks += 1
                 f.write("%s\t%s\t%s\t%s\t%s\n"\
                     %(pd_hash, qu_hash, label, answer, emb_txt))
-    print("Generating landmark embeddings took %.2f seconds."\
+    print('INFO: Generating landmark embeddings took %.2f seconds.' \
         %(time() - start))
-    print("Found {} non zero landmarks in total.".format(n_landmarks))
+    print("INFO: Found {} non zero landmarks in total.".format(n_landmarks))
 
 
 def main():
-    train_dev_test_split(os.path.join('data', 'grade_data.xml'))
-    landmarks(os.path.join('munge',  'modeling.csv'))
+    train_test_landmark_split(os.path.join('data', 'grade_data.xml'))
+    landmarks(
+        os.path.join('munge',  'grade_data.csv'),
+        os.path.join('munge',  'landmarks.csv')
+    )
     
 
 if __name__ == "__main__":

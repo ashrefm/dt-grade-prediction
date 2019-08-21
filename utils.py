@@ -1,3 +1,4 @@
+"""Just utilitary functions and classes."""
 
 import hashlib
 import itertools
@@ -12,6 +13,7 @@ from numpy import dot
 from numpy.linalg import norm
 import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn.externals import joblib
 from pyemd import emd
 
 
@@ -76,10 +78,17 @@ class GradeXML2DataFrame:
         return pd.DataFrame(instances, columns=columns)
 
 
-def get_hash(string):
-    """Hash a string into the first 10 hexadecimal characters using MD5 algorithm."""
+def get_hash(text):
+    """Generate a hashkey of text using the MD5 algorithm."""
 
-    return hashlib.md5(string.encode()).hexdigest()[:10]
+    punctuation = string.punctuation
+    punctuation = punctuation + "’" + "“" + "?" + "‘"
+    text = [c if c not in punctuation else ' ' for c in text]
+    text = ''.join(text)
+    text = re.sub(r'\s+', ' ', text)
+    text = text.lower()
+    text = text.strip()
+    return hashlib.md5(text.encode()).hexdigest()[:10]
 
 
 def get_reference_answers(reference_answers):
@@ -104,18 +113,27 @@ def get_reference_answers(reference_answers):
 class Featurizer:
 
     def __init__(self, embedding_file):
+
+        if not os.path.exists(embedding_file):
+            raise IOError("Embeddings file does not exist: %s" %embedding_file)
+
         punctuation = string.punctuation
         punctuation = punctuation + "’" + "“" + "?" + "‘"
         self.punctuation = punctuation
-        print('Loading word vectors...')
-        self.word2vec = KeyedVectors.load_word2vec_format(embedding_file, binary=True)
-        print('Done! Using %s word vectors from pre-trained word2vec.'\
+        print('INFO: Loading word vectors...')
+        self.word2vec = KeyedVectors.load_word2vec_format(
+            embedding_file,
+            binary=True)
+
+        print('INFO: Done! Using %s word vectors from pre-trained word2vec.' \
             %len(self.word2vec.vocab))
     
     def remove_punc(self, phrase):
-        """Remove punctuation, changes to lower case, strips leading, middle and trailing spaces."""
+        """Remove punctuation, changes to lower case, strips leading,
+        middle and trailing spaces."""
 
-        nopunc = ''.join([c if c not in self.punctuation else ' ' for c in phrase])
+        nopunc = [c if c not in self.punctuation else ' ' for c in phrase]
+        nopunc = ''.join(nopunc)
         nopunc = re.sub(r'\s+', ' ', nopunc)
         nopunc = nopunc.lower()
         nopunc = nopunc.strip()
@@ -175,13 +193,9 @@ class Featurizer:
     def cossim_from_phrase(self, phrase1, phrase2):
         """Compute the cosine similarity between two phrases."""
 
-        emb1 = self.preprocess(phrase1)
-        emb2 = self.preprocess(phrase2)
-
-        if norm(emb1)==0 or norm(emb2)==0:
-            sim = 0
-        else: 
-            sim = self.cossim_from_emb(emb1, emb2)
+        emb1 = self.doc2vec(phrase1)
+        emb2 = self.doc2vec(phrase2)
+        sim = self.cossim_from_emb(emb1, emb2)
         return sim
 
     def asym_diff(self, phrase1, phrase2):
@@ -268,3 +282,14 @@ def plot_confusion_matrix(cm, classes, normalize=False,
     plt.tight_layout()
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
+
+
+def load_model(model_file):
+    """Load a pretained model from pickel file."""
+
+    if not os.path.exists(model_file):
+            raise IOError("Model file does not exist: %s" %model_file)
+    model = joblib.load(model_file)
+    print("INFO: Model %s was loaded successfully." \
+        %os.path.basename(model_file))
+    return model
