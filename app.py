@@ -93,7 +93,7 @@ def get_prediction(landmarks, instance):
     
     Args:
         landmarks (dataframe): landmark instances from preprocessing
-        instance (dict) : contrains intance data (pb_hash, qu_hash, answer)
+        instance (dict) : contains intance data (pb_hash, qu_hash, answer)
 
     Returns: 
         prediction (string) : e.g correct, incorrect,..
