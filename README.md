@@ -96,6 +96,7 @@ The model will predict "Unknown" if the problem description and question are not
 Otherwise, we get a prediction in the following list:  
 *Correct | Correct but incomplete | Contradictory | Incorrect*
 
+![Web App](img/web_app.png)
 
 # Quick Links
 * DT-Grade Paper: [Evaluation Dataset (DT-Grade) and Word Weighting Approach towards Constructed Short Answers Assessment in Tutorial Dialogue Context](https://pdfs.semanticscholar.org/684f/a5e6cfd37f73732d517c3586379c1ab3c117.pdf)
